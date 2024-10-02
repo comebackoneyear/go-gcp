@@ -409,31 +409,6 @@ func (m *Mutex) AdoptData(ctx context.Context, id string, data io.Reader) error 
 	return m.UpdateData(ctx, data)
 }
 
-// func (m *Mutex) createObject2(ctx context.Context, generation string, data io.Reader) (int, string, error) {
-// 	if generation == "" {
-// 		generation = "0"
-// 	}
-
-// 	// Create/update the lock object if the generation matches.
-// 	req, err := http.NewRequestWithContext(ctx, http.MethodPut, m.url(), data)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	req.Header.Set("Cache-Control", "no-store")
-// 	req.Header.Set("x-goog-if-generation-match", generation)
-// 	req.Header.Set("x-goog-meta-ttl", strconv.FormatInt(m.ttl, 10))
-
-// 	res, err := HTTPClient.Do(req)
-// 	if err != nil {
-// 		return 0, "", err
-// 	}
-// 	res.Body.Close()
-
-// 	log.Printf("writegen %s", res.Header.Get("x-goog-generation"))
-
-// 	return res.StatusCode, res.Header.Get("x-goog-generation"), nil
-// }
-
 func (m *Mutex) createObject(ctx context.Context, generation string, data io.Reader) (int, string, error) {
 	if generation == "" {
 		generation = "0"
@@ -489,26 +464,7 @@ func (m *Mutex) extendObject(ctx context.Context, generation string) (int, strin
 	reader := strings.NewReader(m.object)
 
 	return m.createObject(ctx, generation, reader)
-	// var buf bytes.Buffer
-	// buf.WriteString("<ComposeRequest><Component><Name>")
-	// xml.EscapeText(&buf, []byte(m.object))
-	// buf.WriteString("</Name></Component></ComposeRequest>")
 
-	// // Extend the lock object if the generation matches.
-	// req, err := http.NewRequestWithContext(ctx, http.MethodPut, m.url()+"?compose", &buf)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// req.Header.Set("Cache-Control", "no-store")
-	// req.Header.Set("x-goog-if-generation-match", generation)
-	// req.Header.Set("x-goog-meta-ttl", strconv.FormatInt(m.ttl, 10))
-
-	// res, err := HTTPClient.Do(req)
-	// if err != nil {
-	// 	return 0, "", err
-	// }
-	// res.Body.Close()
-	// return res.StatusCode, res.Header.Get("x-goog-generation"), nil
 }
 
 func (m *Mutex) deleteObject(ctx context.Context, generation string) (int, error) {
@@ -531,22 +487,6 @@ func (m *Mutex) deleteObject(ctx context.Context, generation string) (int, error
 	return http.StatusOK, nil
 }
 
-// func (m *Mutex) deleteObject(ctx context.Context, generation string) (int, error) {
-// 	// Delete the lock object if the generation matches.
-// 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, m.url(), nil)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	req.Header.Set("x-goog-if-generation-match", generation)
-
-// 	res, err := HTTPClient.Do(req)
-// 	if err != nil {
-// 		return 0, err
-// 	}
-// 	res.Body.Close()
-// 	return res.StatusCode, nil
-// }
-
 func (m *Mutex) inspectObject(ctx context.Context, data io.Writer) (int, string, error) {
 	attrs, err := StorageClient.Bucket(m.bucket).Object(m.object).Attrs(ctx)
 
@@ -554,7 +494,14 @@ func (m *Mutex) inspectObject(ctx context.Context, data io.Writer) (int, string,
 		if errors.Is(err, storage.ErrObjectNotExist) {
 			return http.StatusNotFound, "", nil
 		}
-		return 0, "", err
+		switch ee := err.(type) {
+		case *googleapi.Error:
+
+			return ee.Code, "", err
+
+		default:
+			return 0, "", err
+		}
 	}
 
 	if expired(attrs) {
@@ -592,42 +539,6 @@ func (m *Mutex) inspectObject(ctx context.Context, data io.Writer) (int, string,
 
 }
 
-// func (m *Mutex) inspectObject(ctx context.Context, data io.Writer) (int, string, error) {
-
-// 		var method string
-// 	if data == nil {
-// 		method = http.MethodHead
-// 	}
-
-// 	// Get the lock object's status.
-// 	req, err := http.NewRequestWithContext(ctx, method, m.url(), nil)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	req.Header.Set("Cache-Control", "no-cache")
-
-// 	res, err := HTTPClient.Do(req)
-// 	if err != nil {
-// 		return 0, "", err
-// 	}
-// 	defer res.Body.Close()
-
-// 	// If it exists, but is expired, act as if it didn't.
-// 	if res.StatusCode == http.StatusOK && expired(res) {
-// 		res.StatusCode = http.StatusNotFound
-// 	}
-// 	if res.StatusCode == http.StatusOK && data != nil {
-// 		switch b := data.(type) {
-// 		case *strings.Builder:
-// 			b.Reset()
-// 		case *bytes.Buffer:
-// 			b.Reset()
-// 		}
-// 		_, err = io.Copy(data, res.Body)
-// 	}
-// 	return res.StatusCode, res.Header.Get("x-goog-generation"), err
-// }
-
 func (m *Mutex) url() string {
 	url := url.URL{
 		Scheme: "https",
@@ -659,28 +570,6 @@ func rewindable(body io.Reader) bool {
 		return body == http.NoBody
 	}
 }
-
-// func expired(res *http.Response) bool {
-// 	// Check for expiration using server date.
-// 	now, err := http.ParseTime(res.Header.Get("Date"))
-// 	if err != nil {
-// 		return false
-// 	}
-// 	modified, err := http.ParseTime(res.Header.Get("Last-Modified"))
-// 	if err != nil {
-// 		return false
-// 	}
-// 	lifecycle, err := http.ParseTime(res.Header.Get("x-goog-expiration"))
-// 	if err == nil && lifecycle.Before(now) {
-// 		return true
-// 	}
-// 	ttl, err := strconv.ParseInt(res.Header.Get("x-goog-meta-ttl"), 10, 64)
-// 	if err != nil || ttl <= 0 {
-// 		return false
-// 	}
-// 	expires := modified.Add(time.Duration(ttl) * time.Second)
-// 	return expires.Before(now)
-// }
 
 func expired(attrs *storage.ObjectAttrs) bool {
 	// Check for expiration using server date.
