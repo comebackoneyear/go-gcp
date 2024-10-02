@@ -44,23 +44,16 @@ type Mutex struct {
 	object     string
 	generation string
 	ttl        int64
-	client     *storage.Client
 }
 
 // New creates a new Mutex at the given bucket and object,
 // with the given time-to-live.
 func New(ctx context.Context, bucket, object string, ttl time.Duration) (*Mutex, error) {
 
-	client, err := storage.NewClient(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	if err := initClient(ctx); err != nil {
 		return nil, err
 	}
 	m := Mutex{
-		client: client,
 		bucket: bucket,
 		object: object,
 	}
@@ -450,7 +443,7 @@ func (m *Mutex) createObject(ctx context.Context, generation string, data io.Rea
 		data = strings.NewReader("")
 	}
 
-	object := m.client.Bucket(m.bucket).Object(m.object)
+	object := StorageClient.Bucket(m.bucket).Object(m.object)
 
 	match := storage.Conditions{DoesNotExist: true}
 
@@ -524,7 +517,7 @@ func (m *Mutex) deleteObject(ctx context.Context, generation string) (int, error
 		return 0, err
 	}
 
-	err = m.client.Bucket(m.bucket).Object(m.object).If(storage.Conditions{GenerationMatch: int64(gen)}).Delete(ctx)
+	err = StorageClient.Bucket(m.bucket).Object(m.object).If(storage.Conditions{GenerationMatch: int64(gen)}).Delete(ctx)
 	if err != nil {
 		switch ee := err.(type) {
 		case *googleapi.Error:
@@ -555,7 +548,7 @@ func (m *Mutex) deleteObject(ctx context.Context, generation string) (int, error
 // }
 
 func (m *Mutex) inspectObject(ctx context.Context, data io.Writer) (int, string, error) {
-	attrs, err := m.client.Bucket(m.bucket).Object(m.object).Attrs(ctx)
+	attrs, err := StorageClient.Bucket(m.bucket).Object(m.object).Attrs(ctx)
 
 	if err != nil {
 		if errors.Is(err, storage.ErrObjectNotExist) {
@@ -572,7 +565,7 @@ func (m *Mutex) inspectObject(ctx context.Context, data io.Writer) (int, string,
 		return http.StatusOK, strconv.Itoa(int(attrs.Generation)), nil
 	}
 
-	reader, err := m.client.Bucket(m.bucket).Object(m.object).NewReader(ctx)
+	reader, err := StorageClient.Bucket(m.bucket).Object(m.object).NewReader(ctx)
 	if err != nil {
 		switch ee := err.(type) {
 		case *googleapi.Error:

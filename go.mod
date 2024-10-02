@@ -6,9 +6,7 @@ require (
 	cloud.google.com/go/functions v1.16.2
 	cloud.google.com/go/storage v1.43.0
 	contrib.go.opencensus.io/exporter/stackdriver v0.13.14
-	github.com/googleapis/gax-go/v2 v2.12.5
 	go.opencensus.io v0.24.0
-	golang.org/x/oauth2 v0.21.0
 	google.golang.org/api v0.187.0
 )
 
@@ -30,6 +28,7 @@ require (
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.2 // indirect
+	github.com/googleapis/gax-go/v2 v2.12.5 // indirect
 	github.com/prometheus/prometheus v0.50.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.49.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0 // indirect
@@ -38,6 +37,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	golang.org/x/crypto v0.24.0 // indirect
 	golang.org/x/net v0.26.0 // indirect
+	golang.org/x/oauth2 v0.21.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.21.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
