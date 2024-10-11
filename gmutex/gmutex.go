@@ -512,7 +512,9 @@ func (m *Mutex) inspectObject(ctx context.Context, data io.Writer) (int, string,
 		return http.StatusOK, strconv.Itoa(int(attrs.Generation)), nil
 	}
 
-	reader, err := StorageClient.Bucket(m.bucket).Object(m.object).NewReader(ctx)
+	match := storage.Conditions{GenerationMatch: attrs.Generation}
+
+	reader, err := StorageClient.Bucket(m.bucket).Object(m.object).If(match).NewReader(ctx)
 	if err != nil {
 		switch ee := err.(type) {
 		case *googleapi.Error:
