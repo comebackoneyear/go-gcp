@@ -2,7 +2,6 @@ package gmutex_test
 
 import (
 	"context"
-	"net/http"
 	"os"
 	"sync"
 	"testing"
@@ -15,7 +14,7 @@ var bucket = os.Getenv("BUCKET")
 var object = os.Getenv("OBJECT")
 
 func TestMain(m *testing.M) {
-	gmutex.HTTPClient = http.DefaultClient
+	// gmutex.HTTPClient = http.DefaultClient
 	if bucket != "" && object != "" {
 		os.Exit(m.Run())
 	}

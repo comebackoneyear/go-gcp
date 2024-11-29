@@ -3,24 +3,26 @@ package gmutex
 
 import (
 	"context"
-	"net/http"
 	"sync"
 
-	"golang.org/x/oauth2/google"
+	"cloud.google.com/go/storage"
 )
 
 // HTTPClient should be set to an http.Client before first use.
 // If unset google.DefaultClient will be used.
-var HTTPClient *http.Client
-
+var StorageClient *storage.Client
 var initMtx sync.Mutex
 
 func initClient(ctx context.Context) (err error) {
 	initMtx.Lock()
 	defer initMtx.Unlock()
-	if HTTPClient == nil {
-		const scope = "https://www.googleapis.com/auth/devstorage.read_write"
-		HTTPClient, err = google.DefaultClient(ctx, scope)
+
+	if StorageClient == nil {
+		StorageClient, err = storage.NewClient(ctx)
+		if err != nil {
+			return err
+		}
 	}
 	return err
+
 }
